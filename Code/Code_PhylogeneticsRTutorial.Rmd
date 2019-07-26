@@ -1,0 +1,1205 @@
+---
+title: 'Code for Linguistic phylogenetics with R: A tutorial introduction'
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+
+
+# Load packages
+
+```{r}
+#Load packages
+library(here)
+library(ape)
+library(phangorn)
+library(ggplot2)
+library(ggsci)
+library(BiocManager)
+library(ggtree)
+```
+
+
+# Indo-Hittite phylogeny
+
+```{r,fig.width = 6, fig.height = 3.5}
+# Indo-Hittite tree in Newick format
+indo.hittite <- read.tree(text = "(Anatolian,(Greek, Tocharian, Slavic, Indo-Iranian, Baltic, Germanic, Celtic, Italic, Armenian, Albanian));") 
+
+#Add node labels
+nodes.tips <- c(indo.hittite$tip.label, "Proto-Indo-European", "Proto-Nuclear-Indo-European")
+
+#Plot tree
+ggtree(indo.hittite,  branch.length='none', layout = 'slanted', right = TRUE) +
+  geom_tiplab(size=3, aes(color=nodes.tips)) +
+    geom_nodelab(label=c(paste("Proto","\u002D","Indo","\u002D","European", sep=""), paste("Proto","\u002D","Nuclear", "\u002D", "Indo", "\u002D", "European", sep="")), vjust=-0.4, hjust=-0.025, angle = 40, size =3) +
+  geom_nodepoint() +
+  ggtitle(expression(italic("Nuclear IE star phylogeny"))) +
+   xlim_tree(2.5) +
+  theme(plot.title = element_text(size = 10)) +
+  scale_color_igv()
+
+```
+
+# Read in data
+
+```{r readindata}
+#Read in the multistate dataset 
+screened.data <- read.table(
+               file = "https://www.cs.rice.edu/~nakhleh/CPHL/IEDATA_112603", 
+               stringsAsFactors = FALSE,
+               fill = NA)
+##This is the where the binary screened dataset is
+here::here("Data", "Binary_Screened.txt")
+#Read in the binary dataset 
+binary.screened.data <- read.table(
+               file = "Data/Binary_Screened.txt", 
+               stringsAsFactors = FALSE,
+               fill = NA)
+```
+
+# Pre-processing
+
+
+
+```{r preprocessingscreened}
+#Remove character M11 in row 32
+screened.data <- screened.data[-c(32),]
+#Add the column names "Num" and "Fea"
+names(screened.data) <- c("Num", "Fea", screened.data[1, 1:24])
+#Remove the first row
+screened.data <- screened.data[2:nrow(screened.data), ]
+#Remove the first column
+screened.data <- screened.data[ , 2:ncol(screened.data)]
+#Replace abbreviated language names with full names
+names(screened.data)[2:ncol(screened.data)] <- c("Hittite", "Armenian", "Greek",
+                      "Albanian", "Tocharian B", "Vedic Sanskrit", 
+                      "Avestan", "Old Church Slavic", "Lithuanian", 
+                      "Old English", "Old Irish", "Latin", "Luvian", 
+                      "Lycian", "Tocharian A", "Old Persian", 
+                      "Old Prussian", "Latvian", "Gothic", 
+                      "Old Norse", "Old High German", "Welsh", "Oscan",   
+                      "Umbrian")
+#Add row names
+row.names(screened.data) <- screened.data[ , 1]
+#Remove column 1
+screened.data <- screened.data[, 2:ncol(screened.data)]
+#Transform character values into numbers
+screened.df <- as.data.frame(sapply(screened.data, as.numeric))
+```
+
+```{r preprocessingbinaryscreened}
+#Remove the first row
+binary.screened.data <- binary.screened.data[2:nrow(binary.screened.data), ]
+names(binary.screened.data)[1:ncol(binary.screened.data)] <- c("Trait", "Hittite", "Armenian", "Greek",
+                      "Albanian", "Tocharian B", "Vedic Sanskrit", 
+                      "Avestan", "Old Church Slavic", "Lithuanian", 
+                      "Old English", "Old Irish", "Latin", "Luvian", 
+                      "Lycian", "Tocharian A", "Old Persian", 
+                      "Old Prussian", "Latvian", "Gothic", 
+                      "Old Norse", "Old High German", "Welsh", "Oscan",   
+                      "Umbrian")
+binary.screened.t <- t(binary.screened.data)
+```
+
+# Convert to `phyDat` format
+
+```{r createphydat}
+#Possible character values
+screened.codings <- c(1:24, 32)
+#Transform dataframe into phyDat object
+screened.phydat <- phyDat(screened.df,
+                          type = "USER",
+                          levels = screened.codings,
+                          names = names(screened.df))
+```
+
+## View object
+
+```{r printscreenedphydat}
+screened.phydat
+```
+
+## Create `anatolian` object
+
+```{r anatolian}
+#Combine the Anatolian languages into one object
+anatolian <- c("Hittite", "Lycian", "Luvian")
+```
+
+# Branch and bound search
+
+```{r screenedbab1}
+#Search tree space with the branch and bound algorithm
+screened.bab <- bab(screened.phydat,
+                    tree = NULL)
+```
+
+## Calculate parsimony score
+
+```{r babparsimony}
+#Calculate parsimony score for branch and bound trees
+parsimony(screened.bab, screened.phydat)
+```
+
+## Check if the trees are rooted
+
+```{r isrootedbab}
+#Check if the trees are rooted
+is.rooted(screened.bab)
+```
+
+## Root the tree
+
+```{r screenedbab2}
+#Root the tree with Anatolian as the outgroup
+screened.bab.rooted <- root(screened.bab,
+                            outgroup = anatolian,
+                            resolve.root = TRUE)
+```
+
+## Check if the trees are rooted
+
+```{r isrootedbabrooted}
+#Check if the trees are rooted
+is.rooted(screened.bab.rooted)
+```
+
+## Add branch lengths
+
+```{r screenedbab3}
+#Add branch lengths
+screened.bab.rooted.blength <- acctran(screened.bab.rooted,
+                                       screened.phydat)
+```
+
+## Get branch lengths for tree 1
+
+```{r babedgelength}
+screened.bab.rooted.blength[[1]]$edge.length
+```
+
+## Get p-score
+
+```{r sumbranchlength}
+sum(screened.bab.rooted.blength[[1]]$edge.length)
+```
+
+# Visualizing trees
+
+## Plot branch and bound tree 1
+
+```{r plottree1, fig.width=10, fig.height=8}
+#Plot the first branch-and-bound tree
+plot(screened.bab.rooted.blength[[1]])
+title("Branch and bound tree 1")
+```
+
+
+The `ggtree` package allows us more control over the graphic representation of trees. It is possible to color code the clades of the tree, for instance. To do this, we begin by drawing up a list of clades.
+
+## Create a list of IE clades
+
+```{r ieclades}
+#Create a list of the IE clades
+
+ie.clades <- list(
+            Anatolian = c("Hittite", "Luvian", "Lycian"),
+            Indo_Iranian = c("Vedic Sanskrit", "Avestan", "Old Persian"),
+            Tocharian = c("Tocharian A", "Tocharian B"),
+            Italic = c("Latin", "Oscan", "Umbrian"), 
+            Celtic = c("Old Irish", "Welsh"),
+            Germanic = c("Old English", "Old High German", "Old Norse", "Gothic"),
+            Balto_Slavic = c("Old Church Slavic", "Lithuanian", "Latvian", "Old Prussian"),
+            Albanian = c("Albanian"),
+            Greco_Armenian = c("Greek", "Armenian"))
+
+```
+
+
+
+In `ggtree` (and `ggplot2` generally) visualizations of data are created by adding layers of commands with the `+` operator. One can remove lines of code from the snippets below to see what each command contributes. 
+
+## Branch and bound tree 2 with heatmap of phonological characters
+
+```{r babtree2,  fig.width=10, fig.height=8}
+bab2.tr.otu <- groupOTU(screened.bab.rooted.blength[[2]], 
+                        ie.clades) 
+bb2.tr <- ggtree(bab2.tr.otu, 
+                 layout = "slanted", 
+                 right = TRUE) +
+       ggtitle(expression(italic("Branch and bound tree 2 with the binary phonological characters"))) + 
+       geom_tiplab(aes(color = group), align=TRUE) +
+       xlim_tree(850) +
+      #Set colors +
+      scale_color_uchicago() +
+#Highlight Hittite and Luvian 
+geom_hilight(node = 34, fill = "ivory3", alpha = 0.3) +
+#Highlight Albanian
+geom_hilight(node = 4, fill = "ivory3", alpha = 0.3) 
+```
+
+## Heatmap
+
+```{r heatmap1,  fig.width=10, fig.height=8}
+#Plot map of phonological traits
+gheatmap(bb2.tr + 
+           xlim(0,2000) + 
+           guides(color = FALSE, size = FALSE),  
+         binary.screened.t[2:25, 2:23], 
+         width = 1, 
+         offset = 380, 
+         font.size = 2) + 
+  scale_fill_grey()
+```
+
+
+## Branch and bound tree 6 with heatmap of morphological characters
+
+```{r backgroundbabtree6,  fig.width=10, fig.height=8}
+bab6.tr.otu <- groupOTU(screened.bab.rooted.blength[[6]], ie.clades) 
+bb6.tr <- ggtree(bab6.tr.otu, 
+                 layout = "slanted", 
+                 right = TRUE) +
+        ggtitle(expression(italic("Branch and bound tree 6 with the binary morphological characters"))) + 
+        geom_tiplab(aes(color = group), 
+                    align=TRUE) +
+  xlim_tree(850) +
+#Set colors
+  scale_color_uchicago() +
+#Highlight Luvian and Lycian
+geom_hilight(node = 34, 
+             fill = "ivory3", 
+             alpha = 0.3) +
+#Highlight Albanian
+geom_hilight(node = 4, 
+             fill = "ivory3", 
+             alpha = 0.3) 
+```
+
+```{r heatmap2,  fig.width=10, fig.height=8}
+#Plot map of phonological traits
+gheatmap(bb6.tr +
+           xlim(0,2000) + 
+           guides(color = FALSE, 
+                  size = FALSE), 
+         binary.screened.t[2:25, 24:49], 
+         width = 1, offset = 380, 
+         font.size = 2) + 
+  scale_fill_grey()
+```
+
+## Facet plot of branch and bound trees
+
+To visualize all fifteen most parsimonious phylogenetic trees, we can create a facet plot with \texttt{ggtree}, which will plot each tree in a panel:\footnote{The function \texttt{plot.multiphylo()} in \texttt{ape} will also produce a plot of each tree.}
+
+```{r babtreefacet1}
+#Create facet plot of all branch and bound trees
+ggtree(screened.bab.rooted.blength) + 
+  facet_wrap(~.id,
+             scale = "free") +
+  geom_tiplab(size = 2) +
+  ggtitle(expression(italic("Branch and bound maximum parsimony trees")))
+```
+
+# Maximum clade credibility tree
+
+```{r calculatemaxcladecred, fig.width=10, fig.height=8}
+#Calculate maximum clade credibility tree
+screened.bab.rooted.blength.mcc <- maxCladeCred(screened.bab.rooted.blength)
+```
+
+## Plot
+
+```{r foregroundbabmaxcladecredibilitytree, fig.width=10, fig.height=8}
+#Plot
+screened.bab.rooted.blength.mcc.otu <- groupOTU(screened.bab.rooted.blength.mcc, ie.clades) 
+ggtree(screened.bab.rooted.blength.mcc.otu, 
+       layout = "slanted", 
+       right = TRUE) + 
+  geom_tiplab(aes(color=group)) +
+  xlim_tree(850) +
+  #Set colors
+scale_color_uchicago() +
+  ggtitle(expression(
+    italic(
+      "Maximum clade credibility tree from branch and bound search")))
+```
+
+# Consensus trees
+
+## Calculate strict consensus tree
+
+```{r calculateconsensustree, fig.width=9, fig.height=8}
+#Calculate strict consensus tree
+screened.bab.rooted.blength.strict <- consensus(screened.bab.rooted.blength)
+
+screened.bab.rooted.blength.strict <-
+ape::consensus(screened.bab.rooted.blength)
+```
+
+## Plot strict consensus tree
+
+```{r babstrictconsensustree,  fig.width=9, fig.height=8}
+#Plot
+screened.bab.rooted.blength.strict.otu <- groupOTU(screened.bab.rooted.blength.strict, ie.clades) 
+ggtree(screened.bab.rooted.blength.strict.otu, 
+       layout = "slanted", 
+       right = TRUE) + 
+  geom_tiplab(aes(color = group)) +
+  xlim_tree(10) +
+#Set colors  
+scale_color_uchicago() +
+#Add title   
+  ggtitle(expression(italic("Strict consensus tree from branch and bound search"))) +
+#Label multifurcating clades
+  geom_cladelabel(node=44, label="Unresolved",  angle = -90, align = TRUE, offset = 2, offset.text = 0.1, hjust = 0.6, fontsize = 4) +
+  geom_cladelabel(node=27, label="Unresolved",  angle = -90, align = TRUE, offset = 2, offset.text = 0.1, fontsize =  4)
+```
+
+## Calculate majority rule consensus tree
+
+```{r calculatebabmajorityruleconsensustree}
+#Calculate majority-rule consensus tree
+screened.bab.rooted.blength.maj <- consensus(screened.bab.rooted.blength, 
+                                              p = 0.5)
+```
+
+## Plot majority rule consensus tree
+
+```{r babmajorityruleconsensustree, fig.width=9, fig.height=8}
+screened.bab.rooted.blength.maj.otu <- groupOTU(screened.bab.rooted.blength.maj, ie.clades) 
+ggtree(screened.bab.rooted.blength.maj.otu, 
+       layout = "slanted", 
+       right = TRUE) + 
+    geom_tiplab(aes(color = group)) +
+  xlim_tree(12) +
+#Set colors  
+scale_color_uchicago() +
+#Add title  
+ ggtitle(expression(italic("Majority rule consensus tree from branch and bound search")))
+```
+
+# Parsimony ratchet
+
+```{r estimatepratchet}
+#Call the ratchet algorithm
+screened.pratchet <- pratchet(screened.phydat, 
+                              trace = 0)
+#Root the tree with Anatolian as the outgroup
+screened.pratchet.rooted <- root(screened.pratchet,
+                                 outgroup = anatolian,
+                                 resolve.root = TRUE)
+#Add branch lengths to rooted tree
+screened.pratchet.blength <- acctran(screened.pratchet.rooted,
+                                     screened.phydat)
+```
+
+## Plot
+
+```{r pratchet,  fig.width=10, fig.height=8}
+screened.pratchet.blength.otu <- groupOTU(screened.pratchet.blength, ie.clades) 
+ggtree(screened.pratchet.blength.otu, 
+       layout = "slanted", 
+       right = TRUE) + 
+  geom_tiplab(aes(color = group)) +
+  xlim_tree(850) +
+  ggtitle(expression(italic("Parsimony ratchet tree"))) +
+  #Set colors    
+scale_color_uchicago() 
+```
+
+## Optimization
+
+```{r sprscreened}
+#SPR optimization
+screened.blength.spr <- optim.parsimony(screened.pratchet.rooted,
+                                        screened.phydat)
+#Root the tree with Anatolian as the outgroup
+screened.spr.rooted <- root(screened.blength.spr,
+                            outgroup = anatolian,
+                            resolve.root = TRUE)
+#Add branch lengths
+screened.spr.rooted.blength <- acctran(screened.spr.rooted, 
+                                       screened.phydat)
+```
+
+## Check if phylogenies are identical
+
+```{r allequalmaxpars}
+#Check if phylogenies are identical
+all.equal.phylo(screened.pratchet.blength, screened.spr.rooted.blength)
+```
+
+# Measuring homoplasy and consistency
+
+```{r}
+#Calculate consistency index
+formatC(CI(screened.spr.rooted.blength,
+           screened.phydat), 3)
+#Calculate retention index
+formatC(RI(screened.spr.rooted.blength,
+           screened.phydat), 3)
+```
+
+## Identify homoplastic characters
+
+```{r rivalues}
+#Identify indices of characters with a retention index < 1
+which(RI(screened.spr.rooted.blength, 
+         screened.phydat, 
+         sitewise = TRUE) < 1) 
+```
+
+# Bootstrapping
+
+## Set seed
+
+```{r setseedmp}
+#Seed for replication
+set.seed(233)
+```
+
+
+## Function for bootstrap samples
+
+```{r pratchetanalysis}
+#Determine the method for inferring trees
+pratchet.function <- function (x) {pratchet(phyDat(x,
+                                        type = "USER",
+                                        levels = screened.codings))}
+
+```
+
+## Transpose dataframe
+
+```{r transposedata}
+#Transpose dataframe
+screened.df.tposed <- t(screened.df)
+```
+
+## Run bootstrap analysis
+
+```{r parsimonybootphylo}
+#Bootstrap
+screened.ratchet.bs <- boot.phylo(screened.pratchet.blength,
+                              screened.df.tposed, 
+                              FUN = pratchet.function,
+                              B = 100,
+                              trees = TRUE,
+                              quiet = TRUE)
+#Root trees with Anatolian as the outgroup
+screened.ratchet.bs$trees <- root(screened.ratchet.bs$trees, 
+                                  outgroup = anatolian, 
+                                  resolve.root = TRUE)
+#Add branch lengths
+screened.ratchet.bs$trees <- acctran(screened.ratchet.bs$trees, screened.phydat)
+```
+
+## Calculate bootstrap scores
+
+```{r bootstrapprops}
+#Bootstrap scores
+scores.ratchet.bs <- prop.clades(screened.pratchet.blength,
+                             screened.ratchet.bs$trees,
+                             rooted = TRUE)
+#Convert into a dataframe for edge width
+scores.df <- as.data.frame(scores.ratchet.bs)
+names(scores.df) <- "support"
+tips <- as.data.frame(rep(100, 24))
+names(tips) <- "support"
+support <- rbind(tips, scores.df)
+support <- as.vector(support$support)
+```
+
+## Ratchet parsimony tree with bootstrap scores
+
+```{r bootstrapplot1, fig.width=10, fig.height=8}
+#Ratchet tree with bootstrap scores
+screened.pratchet.blength.otu <- groupOTU(screened.pratchet.blength, ie.clades) 
+ggtree(screened.pratchet.blength.otu, 
+       layout = "slanted", right = TRUE, 
+       aes(size=I(support/75))) + 
+    geom_tiplab(aes(color = group),
+                size=I(support[1:24]/25)) +
+    xlim_tree(850) +
+    geom_nodelab(label = scores.ratchet.bs,
+                 size=I(support[1:23]/30),
+                 geom = 'label') +
+  ggtitle(expression(italic("Parsimony ratchet tree with bootstrap scores"))) +
+#Set colors    
+scale_color_uchicago() 
+```
+
+# Prunded dataset
+
+```{r reduceddata}
+#Remove fourteen highly homoplastic characters
+pruned.df <- screened.df[-c(2, 3, 28, 86, 104, 109, 166, 167, 209, 232, 245, 258, 293, 294), ]
+#Convert pruned dataframe to phyDat format
+pruned.phydat <- phyDat(pruned.df,
+                          type = "USER",
+                          levels = screened.codings,
+                          names = names(screened.df))
+#Transpose pruned dataframe
+pruned.df.tposed <- t(pruned.df)
+```
+
+## Ratchet search
+
+```{r reduceddatapratchet}
+#Call the ratchet algorithm
+pruned.pratchet <- pratchet(pruned.phydat)
+#Root the tree with Anatolian as the outgroup
+pruned.pratchet.rooted <- root(pruned.pratchet,
+                                 outgroup = anatolian,
+                                 resolve.root = TRUE)
+#Add branch lengths to rooted tree
+pruned.pratchet.blength <- acctran(pruned.pratchet.rooted,
+                          pruned.phydat)
+```
+
+## Bootstrap 
+
+```{r reduceddatabootstrap}
+#Bootstrap
+pruned.ratchet.bs <- boot.phylo(pruned.pratchet.blength,
+                              pruned.df.tposed, 
+                              FUN = pratchet.function,
+                              B = 100,
+                              trees = TRUE,
+                              quiet = TRUE)
+
+#Root trees with Anatolian as the outgroup
+pruned.ratchet.bs$trees <- root(pruned.ratchet.bs$trees, outgroup = anatolian, 
+                                    resolve.root = TRUE)
+#Add branch lengths
+pruned.ratchet.bs$trees <- acctran(pruned.ratchet.bs$trees, pruned.phydat)
+#Calculate bootstrap scores
+pruned.scores.ratchet.bs <- prop.clades(pruned.pratchet.blength,
+                             pruned.ratchet.bs$trees,
+                             rooted = TRUE)
+#Convert into a dataframe for edge width
+pruned.scores.df <- as.data.frame(pruned.scores.ratchet.bs)
+names(pruned.scores.df) <- "support"
+tips <- as.data.frame(rep(100, 24))
+names(tips) <- "support"
+pruned.support <- rbind(tips, pruned.scores.df)
+pruned.support <- as.vector(pruned.support$support)
+```
+
+## Plot tree
+
+```{r reduceddatabootstrapplot, fig.width=10, fig.height=8}
+#Plot
+pruned.pratchet.blength.otu <- groupOTU(pruned.pratchet.blength, ie.clades)
+
+ggtree(pruned.pratchet.blength.otu, 
+       layout = "slanted", 
+       right = TRUE, aes(size=I(pruned.support/75))) +
+  geom_tiplab(aes(color = group),
+              size=I(pruned.support[1:24]/25)) +
+  xlim_tree(850) +
+  geom_nodelab(label = pruned.scores.ratchet.bs,
+               size=I(pruned.support[1:23]/30),
+               geom = 'label') + 
+  ggtitle(expression(italic("Parsimony ratchet tree with bootstrap scores (Pruned data set)"))) +
+#Set colors    
+scale_color_uchicago() 
+```
+
+# Consensus trees from the bootstrapped trees
+
+```{r bootstrapstrictconsensustree}
+#Calculate strict consensus tree
+screened.ratchet.bs.strict <- consensus(screened.ratchet.bs$trees)
+```
+
+## Plot
+
+```{r bootstrapstrictconsensustreeplot, fig.width=9, fig.height=8}
+#Plot
+screened.ratchet.bs.strict.otu <- groupOTU(screened.ratchet.bs.strict, 
+        ie.clades)
+ggtree(screened.ratchet.bs.strict.otu, 
+       layout = "slanted", 
+       right = TRUE) +
+  geom_tiplab(aes(color = group)) +
+  xlim_tree(8) +
+  ggtitle(expression(italic("Strict consensus tree"))) +
+#Set colors    
+scale_color_uchicago() 
+```
+
+## Majority rule consensus tree
+
+```{r bootstrapmajorityruleconsensustree,  fig.width=9, fig.height=8}
+#Calculate majority-rule consensus tree
+screened.ratchet.bs.maj <- consensus(screened.ratchet.bs$trees, 
+                                              p = 0.5)
+```
+
+## Plot
+
+```{r bootstrapmajorityruleconsensustreeplot,  fig.width=9, fig.height=8}
+#Plot
+screened.ratchet.bs.maj.otu <- groupOTU(screened.ratchet.bs.maj, ie.clades)
+ggtree(screened.ratchet.bs.maj.otu, 
+       layout = "slanted", 
+       right = TRUE) + 
+  geom_tiplab(aes(color = group)) +
+  xlim_tree(10) +
+  ggtitle(expression(italic("Majority rule consensus tree"))) +
+#Set colors    
+scale_color_uchicago() 
+```
+
+## Maximum clade credibility tree
+
+```{r maxcladecredibilitytree, fig.width=10, fig.height=8}
+#Calculate maximum clade credibility tree
+screened.ratchet.bs.mcc <- maxCladeCred(screened.ratchet.bs$trees)
+#Plot
+screened.ratchet.bs.mcc.otu <- groupOTU(screened.ratchet.bs.mcc, ie.clades)
+```
+
+## Plot
+
+```{r maxcladecredibilitytreeplot, fig.width=10, fig.height=8}
+ggtree(screened.ratchet.bs.mcc.otu, 
+       layout = "slanted", 
+       right = TRUE) + 
+  geom_tiplab(aes(color = group)) +
+  ggtitle(expression(italic("Maximum clade credibility tree"))) +
+  xlim_tree(850) +
+#Set colors  
+scale_color_uchicago() 
+```
+
+# UPGMA
+
+## Calculate Hamming distance
+
+```{r hammingscreenedupgma}
+#Calculate Hamming distance
+screened.hamming <- dist.hamming(screened.phydat)
+``` 
+
+## Infer UPGMA tree
+
+```{r upgmatree}
+#Infer UPGMA phylogeny
+screened.hamming.upgma <- upgma(screened.hamming)
+```
+
+## Bootstrap
+
+```{r bshammingupgma}
+#Phylogenetic method for pseudoreplicates
+phylo.fun.upgma.hamming <- function (x) {upgma(dist.hamming(phyDat(x,
+                                        type = "USER",
+                                        levels = screened.codings)))}
+#Bootstrap
+screened.hamming.upgma.bs <- boot.phylo(screened.hamming.upgma,
+                              screened.df.tposed,
+                              phylo.fun.upgma.hamming, 
+                              B = 100,
+                              trees = TRUE,
+                              quiet = TRUE)
+#Bootstrap scores
+scores.hamming.upgma.bs <- prop.clades(screened.hamming.upgma,
+screened.hamming.upgma.bs$trees,
+rooted = TRUE)
+#Convert into a dataframe for edge width
+scores.hamming.upgma.bs.df <- as.data.frame(scores.hamming.upgma.bs)
+names(scores.hamming.upgma.bs.df) <- "support"
+tips <- as.data.frame(rep(100, 24))
+names(tips) <- "support"
+hamming.upgma.support <- rbind(tips, scores.hamming.upgma.bs.df)
+hamming.upgma.support <- as.vector(hamming.upgma.support$support)
+```
+
+## UPGMA tree with bootstrap scores
+
+```{r bshammingupgmatr, fig.width=9, fig.height=8}
+screened.hamming.upgma.otu <- groupOTU(screened.hamming.upgma, ie.clades)
+
+ggtree(screened.hamming.upgma.otu,
+       layout = "slanted",
+       right = TRUE,
+       aes(size=I(hamming.upgma.support/75))) +
+  geom_tiplab(aes(color = group), 
+              size=I(hamming.upgma.support[1:24]/25)) +
+  xlim_tree(0.5) +
+  ggtitle(expression(italic("UPGMA tree (Hamming distance)"))) +
+  geom_nodelab(label = scores.hamming.upgma.bs,
+              geom = 'label', size=I(hamming.upgma.support[1:23]/30)) +
+#Set colors    
+scale_color_uchicago() 
+```
+
+## Consistency and retention indices for UPGMA tree
+
+```{r ciriupgma}
+#Calculate consistency index
+CI(screened.hamming.upgma, screened.phydat)
+#Calculate retention index
+RI(screened.hamming.upgma, screened.phydat)
+```
+
+## Cluster validation
+
+```{r clustervalidationupgma}
+#Calculate cophenetic scores
+screened.hamming.matrix <- as.matrix(screened.hamming)
+screened.hamming.upgma.cophenetic <- cophenetic.phylo(screened.hamming.upgma)
+screened.hamming.upgma.cophenetic.matrix <-
+  as.matrix(screened.hamming.upgma.cophenetic)
+#Calculate correlation between distance matrix and UPGMA distances
+cor(as.vector(screened.hamming.matrix),
+    as.vector(screened.hamming.upgma.cophenetic.matrix))
+```
+
+# Neighbor joining
+
+```{r hammingnj}
+#Infer neighbor-joining phylogeny
+screened.hamming.nj <- NJ(screened.hamming)
+#Root the tree with Anatolian as the outgroup
+screened.hamming.nj.rooted <- root(screened.hamming.nj,
+                                   outgroup = anatolian,
+                                   resolve.root = TRUE)
+```  
+
+## Bootstrap
+
+```{r bshammingnj}
+#Phylogenetic function for pseudoreplicates
+nj.function <- function (x) {NJ(dist.hamming(phyDat(x,
+                             type = "USER",
+                             levels = screened.codings)))}
+#Bootstrap
+screened.hamming.nj.bs <- boot.phylo(screened.hamming.nj, 
+                                        screened.df.tposed, 
+                                        FUN = nj.function, 
+                                        B = 100,
+                                        trees = TRUE,
+                                        quiet = TRUE)
+#Root the trees with Anatolian as an outgroup
+screened.hamming.nj.bs$trees <- root(screened.hamming.nj.bs$trees, 
+outgroup = anatolian,
+resolve.root = TRUE)
+#Bootstrap scores
+scores.hamming.nj.bs <- prop.clades(screened.hamming.nj.rooted,
+            screened.hamming.nj.bs$trees, 
+            rooted = TRUE)
+#Convert into a dataframe for edge width
+scores.hamming.nj.bs.df <- as.data.frame(scores.hamming.nj.bs)
+names(scores.hamming.nj.bs.df) <- "support"
+tips <- as.data.frame(rep(100, 24))
+names(tips) <- "support"
+hamming.upgma.support <- rbind(tips, scores.hamming.nj.bs.df)
+hamming.upgma.support <- as.vector(hamming.upgma.support$support)
+```
+
+## NJ tree with bootstrap scores
+
+```{r bshammingnjplot, fig.width=9, fig.height=8}
+screened.hamming.nj.rooted.otu <- groupOTU(screened.hamming.nj.rooted, ie.clades)
+
+ggtree(screened.hamming.nj.rooted.otu, 
+       right = TRUE, 
+       aes(size=I(hamming.upgma.support/75))) +
+  geom_tiplab(aes(color = group), 
+              size=I(hamming.upgma.support[1:24]/25)) +
+  geom_nodelab(label = scores.hamming.nj.bs,
+               geom = 'label',
+               size=I(hamming.upgma.support[1:23]/30)) +
+  xlim_tree(.75) +
+  ggtitle(expression(italic("NJ tree (Hamming distance)"))) +
+#Set colors    
+scale_color_uchicago() 
+```
+
+## Consistency and retention indices for NJ tree
+
+```{r cirivaluenj}
+#Calculate consistency index
+CI(screened.hamming.nj.rooted, screened.phydat)
+#Calculate retention index
+RI(screened.hamming.nj.rooted, screened.phydat)
+```
+
+## Cluster validation 
+
+```{r clustervalidationnj}
+#Calculate cophenetic scores
+screened.hamming.matrix <- as.matrix(screened.hamming)
+screened.hamming.nj.rooted.cophenetic <- 
+  cophenetic.phylo(screened.hamming.nj.rooted)
+screened.hamming.nj.rooted.cophenetic.matrix <- 
+  as.matrix(screened.hamming.nj.rooted.cophenetic)
+#Calculate correlation between distance matrix and NJ distances
+cor(as.vector(screened.hamming.matrix), 
+    as.vector(screened.hamming.nj.rooted.cophenetic.matrix))
+```
+
+# Maximum likelihood 
+
+## Coin example
+
+```{r faircoinplot, fig.align='center', fig.width=4, fig.height=3}
+fair.coin <- rbinom(p = 0.5, size = 100, n = 100)
+ggplot()+
+  aes(x=fair.coin) +
+  geom_bar(fill= "#eaab00",width = 0.4) +
+  labs(title = expression(italic("Fair coin")), x = "Number of heads", y = "Frequency") +
+    theme(plot.title = element_text(size = 10)) 
+```
+
+```{r biasedcoinplot, fig.align='center', fig.width=4, fig.height=3}
+biased.coin.noshow <- rbinom(p = 0.75, size = 100, n = 100)
+ggplot()+
+  aes(x = biased.coin.noshow)+
+  geom_bar(fill = "dodgerblue4", width = 0.4) +
+  labs(title = expression(italic("Biased coin")), x = "Number of heads", y = "Frequency") +
+    theme(plot.title = element_text(size = 10)) 
+```
+
+```{r binomialprobabilities}
+#Create 100 random samples from a coin with a 0.75 probability of landing on heads
+biased.coin <- rbinom(p = 0.75, size = 100, n = 100)
+#Likelihood of the data given that the coin is fair
+prod(dbinom(x = biased.coin, prob = 0.5, size = 100))
+#Likelihood of the data given 65% probability of heads
+prod(dbinom(x = biased.coin, prob = 0.65, size = 100))
+#Likelihood of the data given 75% probability of heads
+prod(dbinom(x = biased.coin, prob = 0.75, size = 100))
+#Likelihood of the data given 85% probability of heads
+prod(dbinom(x = biased.coin, prob = 0.85, size = 100))
+```
+
+```{r logbinomialprobabilities}
+#Log-likelihood of the data given that the coin is fair
+sum(dbinom(x = biased.coin, prob = 0.5, size = 100, log = T))
+#Log-likelihood of the data given 65% probability of heads
+sum(dbinom(x = biased.coin, prob = 0.65, size = 100, log = T))
+#Log-likelihood of the data given 75% probability of heads
+sum(dbinom(x = biased.coin, prob = 0.75, size = 100, log = T))
+#Log-likelihood of the data given 85% probability of heads
+sum(dbinom(x = biased.coin, prob = 0.85, size = 100, log = T))
+```
+
+
+
+```{r loglikelihoodgraph, fig.align='center', fig.width=4, fig.height=3}
+log.likelihood <- function(par.p, par.N, data)
+{
+   LL <- sum(dbinom(x = data, prob = par.p, size = par.N, log = T))
+   return(LL)
+}
+
+probability.vec <- seq(0, 1, by = 0.01)
+log.likelihood.values <- sapply(probability.vec, FUN = log.likelihood, par.N = 100, data = biased.coin)
+
+ggplot()+
+  aes(x = probability.vec, y = log.likelihood.values)+
+  geom_line() +
+  geom_vline(xintercept = .75, color = "red3") +
+  labs(x = "Probability of heads (parameter value)", y = "Log-likehood") 
+```
+
+## Hypothetical trees
+
+### Tree 1
+
+```{r thesetup, fig.width=4, fig.height=2, fig.align='center'}
+#Data
+toy.df <- data.frame(A = c(0), 
+B = c(1),
+C = c(0))
+#Convert to phyDat
+toy.phydat <- phyDat(toy.df,
+                              type = "USER",levels = c(1, 0),
+                              names = names(toy.df))
+#Create tree
+l1l2.l3 <- read.tree(text = "((A,B),C);")
+clades1 <- list(
+AC = c("A", "B"),
+B = c("C"))
+l1.l2l3.otu <- groupOTU(l1l2.l3, clades1)
+#Plot tree
+ggtree(l1.l2l3.otu, aes(color = group),
+       layout = "slanted",
+       right = TRUE) + 
+  geom_tiplab(label=c("B:1", "A:0", "C:0")) + 
+  ggtitle(expression(italic("Hypothetical tree 1"))) +
+  geom_nodelab(label=c(paste("Proto","\u002D","AB:1", sep=""), paste("Proto","\u002D","ABC:1", sep="")), 
+               hjust = -0.2) +
+  xlim_tree(4) +
+    scale_color_manual(values = c("dodgerblue4", "#eaab00")) +
+    theme(plot.title = element_text(size = 10)) 
+```
+
+```{r firsttree, fig.width=4, fig.height=2, fig.align='center'}
+ggtree(l1.l2l3.otu, aes(color = group), 
+       layout = "slanted", 
+       right = TRUE) + 
+  geom_tiplab(label=c("B:1", "A:0", "C:0")) + 
+  ggtitle(expression(italic("Hypothetical tree 1"))) +
+  geom_nodelab(label=c(paste("Proto","\u002D","AB:1", sep=""), paste("Proto","\u002D","ABC:1", sep="")), hjust = -0.2) +
+  xlim_tree(4) +
+    scale_color_manual(values = c("dodgerblue4", "#eaab00")) +
+    theme(plot.title = element_text(size = 10)) 
+```
+
+### Tree 2
+
+```{r secondtree, fig.width=4, fig.height=2, fig.align='center'}
+#Read in tree
+l1.l2l3 <- read.tree(text = "(B,(A,C));")
+#Create list of clades
+clades2 <- list(
+AC = c("A", "C"),
+B = c("B"))
+l1.l2l3.otu <- groupOTU(l1.l2l3, clades2)
+
+ggtree(l1.l2l3.otu, aes(color = group), 
+       layout = "slanted", 
+       right = TRUE) + 
+   geom_tiplab(label=c("A:0", "C:0", "B:1")) + 
+   ggtitle(expression(italic("Hypothetical tree 2"))) +
+  geom_nodelab(label=c(paste("Proto","\u002D","AC:0", sep=""), paste("Proto","\u002D","ABC:1", sep="")), hjust = -0.2) +
+   xlim_tree(4) +
+#Set colors    
+    scale_color_manual(values = c("dodgerblue4", "#eaab00")) +
+    theme(plot.title = element_text(size = 10)) 
+```
+
+# Calculate log-likelihood
+
+```{r mlcalc}
+#Parsimony ratchet tree
+screened.mp.pml <- pml(screened.pratchet.blength, screened.phydat)
+screened.mp.pml$logLik
+#UPGMA tree
+screened.hamming.upgma.pml <- pml(screened.hamming.upgma, screened.phydat)
+screened.hamming.upgma.pml$logLik
+# Neighbor joining tree
+screened.hamming.nj.pml <- pml(screened.hamming.nj.rooted, screened.phydat)
+screened.hamming.nj.pml$logLik
+```
+
+## Infer MLE trees
+
+```{r optimizedml1}
+#Optimize parameters of maximum parsimony tree
+screened.mp.opt <- optim.pml(screened.mp.pml,
+                            optEdge = TRUE,
+                            optNni = TRUE)
+#Root the tree with Anatolian as the outgroup
+screened.mp.opt.rooted <- root(screened.mp.opt$tree,
+                              outgroup = anatolian,
+                              resolve.root = TRUE)
+```
+
+```{r optimizedml2}
+#Optimize parameters of UPGMA tree
+screened.hamming.upgma.opt <- optim.pml(screened.hamming.upgma.pml,
+                                      optEdge = TRUE,
+                                      optNni = TRUE)
+#Root the tree with Anatolian as the outgroup
+screened.hamming.upgma.opt.rooted <- root(screened.hamming.upgma.opt$tree,
+                                      outgroup = anatolian, 
+                                      resolve.root = TRUE)
+#Optimize parameters of NJ tree
+screened.hamming.nj.opt <- optim.pml(screened.hamming.nj.pml, 
+                                optEdge = TRUE,
+                                optNni = TRUE)
+#Root the tree with Anatolian as the outgroup
+screened.hamming.nj.opt.rooted <- root(screened.hamming.nj.opt$tree,
+                        outgroup = anatolian,
+                        resolve.root = TRUE)
+```
+
+# Bootstrap
+
+
+```{r bootstrapmlerates1}
+#Maximum parsimony start tree
+optim.pml.function.mp <- function (x) {
+  optim.obj.mp <- optim.pml(pml(screened.pratchet.blength,
+                        phyDat(x,
+                              type = "USER",
+                              levels = screened.codings,
+                              names = names(x))), 
+                    optEdge = TRUE,
+                    optNni = TRUE)
+#Root the tree with Anatolian as the outgroup  
+root(optim.obj.mp$tree,
+     outgroup = anatolian,
+     resolve.root = TRUE)}
+#Bootstrap
+mp.opt.bs <- boot.phylo(screened.mp.opt.rooted,
+                              screened.df.tposed, 
+                              FUN = optim.pml.function.mp,
+                              B = 100,
+                              trees = TRUE,
+                              quiet = TRUE)
+#Bootstrap scores
+scores.mp.opt.rooted.bs <- prop.clades(screened.mp.opt.rooted,  
+                                    mp.opt.bs$trees,
+                                    rooted = TRUE)
+#Convert into a dataframe for edge width
+scores.mp.opt.rooted.bs.df <- as.data.frame(scores.mp.opt.rooted.bs)
+names(scores.mp.opt.rooted.bs.df) <- "support"
+tips <- as.data.frame(rep(100, 24))
+names(tips) <- "support"
+mp.opt.rooted.support <- rbind(tips, scores.mp.opt.rooted.bs.df)
+mp.opt.rooted.support <- as.vector(mp.opt.rooted.support$support)
+```
+
+```{r bootstrapmlerates2}
+#UPGMA start tree
+optim.pml.function.upgma <- function (x) {
+  optim.obj.upgma <- optim.pml(pml(screened.hamming.upgma,
+                        phyDat(x,
+                              type = "USER",
+                              levels = screened.codings,
+                              names = names(x))), 
+                   optEdge = TRUE,
+                   optNni = TRUE)
+#Root the tree with Anatolian as the outgroup  
+root(optim.obj.upgma$tree,
+     outgroup = anatolian,
+     resolve.root = TRUE)}
+#Bootstrap
+upgma.opt.bs <- boot.phylo(screened.hamming.upgma.opt.rooted,
+                              screened.df.tposed, 
+                              FUN = optim.pml.function.upgma,
+                              B = 100,
+                              trees = TRUE,
+                              quiet = TRUE)
+#Bootstrap scores
+scores.upgma.opt.rooted.bs <- 
+  prop.clades(screened.hamming.upgma.opt.rooted,  
+  upgma.opt.bs$trees,
+  rooted = TRUE)
+#Convert into a dataframe for edge width
+scores.upgma.opt.rooted.bs.df <- as.data.frame(scores.upgma.opt.rooted.bs)
+names(scores.upgma.opt.rooted.bs.df) <- "support"
+tips <- as.data.frame(rep(100, 24))
+names(tips) <- "support"
+upgma.opt.rooted.support <- rbind(tips, scores.upgma.opt.rooted.bs.df)
+upgma.opt.rooted.support <- as.vector(upgma.opt.rooted.support$support)
+```
+
+```{r bootstrapmlerates3}
+#NJ start tree
+optim.pml.function.nj <- function (x) {
+optim.obj.nj <- optim.pml(pml(screened.hamming.nj.rooted, 
+                        phyDat(x,
+                            type = "USER",
+                            levels = screened.codings,
+                            names = names(x))), 
+                    optEdge = TRUE,
+                    optNni = TRUE)
+root(optim.obj.nj$tree,
+     outgroup = anatolian,
+     resolve.root = TRUE)}
+#Bootstrap
+nj.opt.bs <- boot.phylo(screened.hamming.nj.opt.rooted,
+                              screened.df.tposed, 
+                              FUN = optim.pml.function.nj,
+                              B = 100,
+                              trees = TRUE,
+                              quiet = TRUE)
+#Bootstrap scores
+scores.nj.opt.rooted.bs <- prop.clades(screened.hamming.nj.opt.rooted,
+            nj.opt.bs$trees,
+            rooted = TRUE)
+#Convert into a dataframe for edge width
+scores.nj.opt.rooted.bs.df <- as.data.frame(scores.nj.opt.rooted.bs)
+names(scores.nj.opt.rooted.bs.df) <- "support"
+tips <- as.data.frame(rep(100, 24))
+names(tips) <- "support"
+nj.opt.rooted.support <- rbind(tips, scores.nj.opt.rooted.bs.df)
+nj.opt.rooted.support <- as.vector(nj.opt.rooted.support$support)
+```
+
+## MLE trees with bootstrap scores
+
+
+
+```{r mleratchetstart, fig.width=10, fig.height=8}
+screened.mp.opt.rooted.otu <- groupOTU(screened.mp.opt.rooted, ie.clades)
+
+ggtree(screened.mp.opt.rooted.otu, 
+       right = TRUE,
+       aes(size=I(mp.opt.rooted.support/75))) +
+  geom_tiplab(aes(color = group),
+              size=I(mp.opt.rooted.support[1:24]/25)) +
+    geom_nodelab(label = scores.mp.opt.rooted.bs,
+              geom = 'label',
+              size=I(mp.opt.rooted.support[1:23]/30)) +
+  ggtitle(expression(italic("MLE tree with bootstrap scores (Ratchet start tree)"))) +
+#Set colors    
+scale_color_uchicago() 
+```
+
+
+```{r mleupgmastart, fig.width=10, fig.height=8}
+screened.hamming.upgma.opt.rooted.otu <- groupOTU(screened.hamming.upgma.opt.rooted, ie.clades)
+
+ggtree(screened.hamming.upgma.opt.rooted.otu, right = TRUE, aes(size=I(upgma.opt.rooted.support/75))) +
+  geom_tiplab(aes(color = group),
+              size=I(upgma.opt.rooted.support[1:24]/25)) +
+  geom_nodelab(label = scores.upgma.opt.rooted.bs,
+               size=I(upgma.opt.rooted.support[1:23]/30),
+              geom = 'label') +
+  ggtitle(expression(italic("MLE tree with bootstrap scores (UPGMA start tree)"))) +
+#Set colors    
+scale_color_uchicago() 
+```
+
+
+
+```{r mlenjstart, fig.width=10, fig.height=8}
+screened.hamming.nj.opt.rooted.otu <- groupOTU(screened.hamming.nj.opt.rooted, ie.clades)
+
+ggtree(screened.hamming.nj.opt.rooted.otu,
+       right = TRUE,
+       aes(size=I(nj.opt.rooted.support/75))) +
+  geom_tiplab(aes(color = group),
+              size=I(nj.opt.rooted.support[1:24]/25)) +
+    geom_nodelab(label = scores.nj.opt.rooted.bs,
+                 size=I(nj.opt.rooted.support[1:23]/30),
+              geom = 'label') +
+  ggtitle(expression(italic("MLE tree with bootstrap scores (NJ start tree)"))) +
+#Set colors    
+scale_color_uchicago() 
+```
+
+## Log-likelihood scores
+
+```{r variousscores}
+screened.mp.opt$logLik
+screened.hamming.upgma.opt$logLik
+screened.hamming.nj.opt$logLik
+```
+
+## Check for identity
+
+```{r mptreesidentity}
+#Check for identity between two phylogenies
+all.equal.phylo(screened.mp.opt.rooted,
+                screened.hamming.upgma.opt.rooted)
+all.equal.phylo(screened.mp.opt.rooted,
+                screened.hamming.nj.opt.rooted)
+all.equal.phylo(screened.hamming.upgma.opt.rooted,
+                screened.hamming.nj.opt.rooted)
+```
+
