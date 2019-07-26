@@ -1,0 +1,24 @@
+Package: PhylogeneticsRTutorial
+Title: What the Package Does (One Line, Title Case)
+Version: 0.0.0.9000
+Authors@R:
+    person(given = "First",
+           family = "Last",
+           role = c("aut", "cre"),
+           email = "first.last@example.com")
+Description: What the package does (one paragraph)
+License: GPL-3
+ByteCompile: true
+Encoding: UTF-8
+LazyData: true
+Imports: bookdown,
+    devtools (>= 2.1.0),
+    git2r (>= 0.26.1),
+    here (>= 0.1),
+    knitr (>= 1.23),
+    remotes (>= 2.1.0),
+    ape (>= 5.3),
+    BiocManager (>= 1.30.4),
+    ggplot2 (>= 3.2.0),
+    ggsci (>= 2.9),
+    phangorn (>= 2.5.5)
