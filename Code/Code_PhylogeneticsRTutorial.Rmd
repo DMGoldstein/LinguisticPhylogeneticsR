@@ -92,9 +92,16 @@ screened.df <- as.data.frame(sapply(screened.data, as.numeric))
 ```
 
 ```{r preprocessingbinaryscreened}
+#Remove character M11 in row 32
+screened.data <- screened.data[-c(32),]
+#Add the column names "Num" and "Fea"
+names(screened.data) <- c("Num", "Fea", screened.data[1, 1:24])
 #Remove the first row
-binary.screened.data <- binary.screened.data[2:nrow(binary.screened.data), ]
-names(binary.screened.data)[1:ncol(binary.screened.data)] <- c("Trait", "Hittite", "Armenian", "Greek",
+screened.data <- screened.data[2:nrow(screened.data), ]
+#Remove the first column
+screened.data <- screened.data[ , 2:ncol(screened.data)]
+#Replace abbreviated language names with full names
+names(screened.data)[2:ncol(screened.data)] <- c("Hittite", "Armenian", "Greek",
                       "Albanian", "Tocharian B", "Vedic Sanskrit", 
                       "Avestan", "Old Church Slavic", "Lithuanian", 
                       "Old English", "Old Irish", "Latin", "Luvian", 
@@ -102,7 +109,12 @@ names(binary.screened.data)[1:ncol(binary.screened.data)] <- c("Trait", "Hittite
                       "Old Prussian", "Latvian", "Gothic", 
                       "Old Norse", "Old High German", "Welsh", "Oscan",   
                       "Umbrian")
-binary.screened.t <- t(binary.screened.data)
+#Add row names
+row.names(screened.data) <- screened.data[ , 1]
+#Remove column 1
+screened.data <- screened.data[, 2:ncol(screened.data)]
+#Transform character values into numbers
+screened.df <- as.data.frame(sapply(screened.data, as.numeric))
 ```
 
 # Convert to `phyDat` format
@@ -249,8 +261,8 @@ geom_hilight(node = 4, fill = "ivory3", alpha = 0.3)
 gheatmap(bb2.tr + 
            xlim(0,2000) + 
            guides(color = FALSE, size = FALSE),  
-         binary.screened.t[2:25, 2:23], 
-         width = 1, 
+         binary.screened.t[2:25, 1:23], 
+         width = 1.2, 
          offset = 380, 
          font.size = 2) + 
   scale_fill_grey()
@@ -287,7 +299,7 @@ gheatmap(bb6.tr +
            guides(color = FALSE, 
                   size = FALSE), 
          binary.screened.t[2:25, 24:49], 
-         width = 1, offset = 380, 
+         width = 1.2, offset = 380, 
          font.size = 2) + 
   scale_fill_grey()
 ```
