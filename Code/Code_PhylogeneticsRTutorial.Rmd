@@ -253,11 +253,15 @@ gheatmap(bb2.tr +
            xlim(0,2000) + 
            guides(color = FALSE, size = FALSE),  
          binary.screened.t[1:24, 1:23], 
-         width = 1.2, 
-         offset = 380, 
-         font.size = 2) + 
+         width = 1, 
+         offset = 370, 
+         font.size = 2, 
+         colnames_angle = 45, 
+         colnames_position = "top") + 
   scale_fill_grey()
 ```
+
+
 
 
 ## Branch and bound tree 6 with heatmap of morphological characters
@@ -290,8 +294,10 @@ gheatmap(bb6.tr +
            guides(color = FALSE, 
                   size = FALSE), 
          binary.screened.t[1:24, 24:49],
-         width = 1.2, offset = 380, 
-         font.size = 2) + 
+         width = 1.2, offset = 370, 
+         font.size = 2, 
+         colnames_angle = 45, 
+         colnames_position = "top") + 
   scale_fill_grey()
 ```
 
