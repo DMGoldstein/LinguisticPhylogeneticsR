@@ -113,7 +113,7 @@ binary.screened.t <- binary.screened.t[-c(1), ]
 ```{r createphydat}
 #Possible character values
 screened.codings <- c(1:24, 32)
-#Transform dataframe into phyDat object
+#Transform dataframe into phyDat
 screened.phydat <- phyDat(screened.df,
                           type = "USER",
                           levels = screened.codings,
@@ -548,7 +548,7 @@ scale_color_uchicago()
 ```{r reduceddata}
 #Remove fourteen highly homoplastic characters
 pruned.df <- screened.df[-c(2, 3, 28, 86, 104, 109, 166, 167, 209, 232, 245, 258, 293, 294), ]
-#Convert pruned dataframe to phyDat format
+#Convert pruned dataframe to phyDat class
 pruned.phydat <- phyDat(pruned.df,
                           type = "USER",
                           levels = screened.codings,
