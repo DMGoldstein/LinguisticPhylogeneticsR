@@ -499,7 +499,7 @@ ggplot() +
   geom_vline(xintercept = pratchet.length, color = "red3")  +
   coord_cartesian(xlim=c(3600, 4250)) +
   xlab("Tree length") +
-  ylab("Frequency")
+  ylab("Count")
 ```
 
 
