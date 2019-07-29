@@ -255,7 +255,7 @@ gheatmap(bb2.tr +
          binary.screened.t[1:24, 1:23], 
          width = 1, 
          offset = 370, 
-         font.size = 2, 
+         font.size = 2.1, 
          colnames_angle = 45, 
          colnames_position = "top") + 
   scale_fill_grey()
@@ -295,7 +295,7 @@ gheatmap(bb6.tr +
                   size = FALSE), 
          binary.screened.t[1:24, 24:49],
          width = 1.2, offset = 370, 
-         font.size = 2, 
+         font.size = 2.1, 
          colnames_angle = 45, 
          colnames_position = "top") + 
   scale_fill_grey()
@@ -462,6 +462,46 @@ which(RI(screened.spr.rooted.blength,
          screened.phydat, 
          sitewise = TRUE) < 1) 
 ```
+
+## Measuring the phylogenetic structure of the dataset
+
+
+```{r randompermutationsie, results='hide', echo=FALSE}
+screened.tposed.df <- as.data.frame(t(screened.df))
+ie.treelength <- vector()
+
+for(i in 1:1000){
+  ie.permutation <- as.data.frame(t(sapply(screened.tposed.df, sample)))
+colnames(ie.permutation) <- c("Hittite","Armenian","Greek","Albanian","Tocharian B",
+                      "Vedic Sanskrit", "Avestan","Old Church Slavic", 
+                      "Lithuanian", "Old English", "Old Irish", 
+                      "Latin", "Luvian", "Lycian", 
+                      "Tocharian A", "Old Persian", 
+                      "Old Prussian", "Latvian","Gothic",
+                      "Old Norse","Old High German", 
+                      "Welsh", "Oscan", "Umbrian")
+  ie.permutation.phydat <- phyDat(ie.permutation,
+                          type = "USER",
+                          levels = screened.codings,
+                          names = names(screened.df))
+  ie.permutation.tr <- pratchet(ie.permutation.phydat)
+  ie.treelength[i] <- sum(acctran(ie.permutation.tr, ie.permutation.phydat)$edge.length)
+}
+```
+
+
+
+```{r randompermutationsieplot, fig.height=3,fig.width=3, fig.align='center', echo=FALSE, tidy=FALSE, collapse=TRUE}
+pratchet.length <- sum(screened.pratchet.blength$edge.length)
+ggplot() + 
+  aes(ie.treelength) + 
+  geom_histogram(binwidth = 5, colour="black", fill="white") +
+  geom_vline(xintercept = pratchet.length, color = "red3")  +
+  coord_cartesian(xlim=c(3600, 4250)) +
+  xlab("Tree length") +
+  ylab("Frequency")
+```
+
 
 # Bootstrapping
 
