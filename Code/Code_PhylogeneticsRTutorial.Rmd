@@ -256,7 +256,7 @@ gheatmap(bb2.tr +
          width = 1, 
          offset = 370, 
          font.size = 2.1, 
-         colnames_angle = 45, 
+         colnames_angle = 90, 
          colnames_position = "top") + 
   scale_fill_grey()
 ```
@@ -296,7 +296,7 @@ gheatmap(bb6.tr +
          binary.screened.t[1:24, 24:49],
          width = 1.2, offset = 370, 
          font.size = 2.1, 
-         colnames_angle = 45, 
+         colnames_angle = 90, 
          colnames_position = "top") + 
   scale_fill_grey()
 ```
@@ -571,12 +571,12 @@ support <- as.vector(support$support)
 screened.pratchet.blength.otu <- groupOTU(screened.pratchet.blength, ie.clades) 
 ggtree(screened.pratchet.blength.otu, 
        layout = "slanted", right = TRUE, 
-       aes(size=I(support/75))) + 
+       aes(size = I(support/75))) + 
     geom_tiplab(aes(color = group),
-                size=I(support[1:24]/25)) +
+                size = I(support[1:24]/25)) +
     xlim_tree(850) +
     geom_nodelab(label = scores.ratchet.bs,
-                 size=I(support[1:23]/30),
+                 size = I(support[1:23]/30),
                  geom = 'label') +
   ggtitle(expression(italic("Parsimony ratchet tree with bootstrap scores"))) +
 #Set colors    
@@ -648,12 +648,12 @@ pruned.pratchet.blength.otu <- groupOTU(pruned.pratchet.blength, ie.clades)
 
 ggtree(pruned.pratchet.blength.otu, 
        layout = "slanted", 
-       right = TRUE, aes(size=I(pruned.support/75))) +
+       right = TRUE, aes(size = I(pruned.support/75))) +
   geom_tiplab(aes(color = group),
-              size=I(pruned.support[1:24]/25)) +
+              size = I(pruned.support[1:24]/25)) +
   xlim_tree(850) +
   geom_nodelab(label = pruned.scores.ratchet.bs,
-               size=I(pruned.support[1:23]/30),
+               size = I(pruned.support[1:23]/30),
                geom = 'label') + 
   ggtitle(expression(italic("Parsimony ratchet tree with bootstrap scores (Pruned data set)"))) +
 #Set colors    
@@ -779,13 +779,13 @@ screened.hamming.upgma.otu <- groupOTU(screened.hamming.upgma, ie.clades)
 ggtree(screened.hamming.upgma.otu,
        layout = "slanted",
        right = TRUE,
-       aes(size=I(hamming.upgma.support/75))) +
+       aes(size = I(hamming.upgma.support/75))) +
   geom_tiplab(aes(color = group), 
-              size=I(hamming.upgma.support[1:24]/25)) +
+              size = I(hamming.upgma.support[1:24]/25)) +
   xlim_tree(0.5) +
   ggtitle(expression(italic("UPGMA tree (Hamming distance)"))) +
   geom_nodelab(label = scores.hamming.upgma.bs,
-              geom = 'label', size=I(hamming.upgma.support[1:23]/30)) +
+              geom = 'label', size = I(hamming.upgma.support[1:23]/30)) +
 #Set colors    
 scale_color_uchicago() 
 ```
@@ -861,12 +861,12 @@ screened.hamming.nj.rooted.otu <- groupOTU(screened.hamming.nj.rooted, ie.clades
 
 ggtree(screened.hamming.nj.rooted.otu, 
        right = TRUE, 
-       aes(size=I(hamming.upgma.support/75))) +
+       aes(size = I(hamming.upgma.support/75))) +
   geom_tiplab(aes(color = group), 
-              size=I(hamming.upgma.support[1:24]/25)) +
+              size = I(hamming.upgma.support[1:24]/25)) +
   geom_nodelab(label = scores.hamming.nj.bs,
                geom = 'label',
-               size=I(hamming.upgma.support[1:23]/30)) +
+               size = I(hamming.upgma.support[1:23]/30)) +
   xlim_tree(.75) +
   ggtitle(expression(italic("NJ tree (Hamming distance)"))) +
 #Set colors    
@@ -1188,12 +1188,12 @@ screened.mp.opt.rooted.otu <- groupOTU(screened.mp.opt.rooted, ie.clades)
 
 ggtree(screened.mp.opt.rooted.otu, 
        right = TRUE,
-       aes(size=I(mp.opt.rooted.support/75))) +
+       aes(size = I(mp.opt.rooted.support/75))) +
   geom_tiplab(aes(color = group),
-              size=I(mp.opt.rooted.support[1:24]/25)) +
+              size = I(mp.opt.rooted.support[1:24]/25)) +
     geom_nodelab(label = scores.mp.opt.rooted.bs,
               geom = 'label',
-              size=I(mp.opt.rooted.support[1:23]/30)) +
+              size = I(mp.opt.rooted.support[1:23]/30)) +
   ggtitle(expression(italic("MLE tree with bootstrap scores (Ratchet start tree)"))) +
 #Set colors    
 scale_color_uchicago() 
@@ -1203,11 +1203,11 @@ scale_color_uchicago()
 ```{r mleupgmastart, fig.width=10, fig.height=8}
 screened.hamming.upgma.opt.rooted.otu <- groupOTU(screened.hamming.upgma.opt.rooted, ie.clades)
 
-ggtree(screened.hamming.upgma.opt.rooted.otu, right = TRUE, aes(size=I(upgma.opt.rooted.support/75))) +
+ggtree(screened.hamming.upgma.opt.rooted.otu, right = TRUE, aes(size = I(upgma.opt.rooted.support/75))) +
   geom_tiplab(aes(color = group),
-              size=I(upgma.opt.rooted.support[1:24]/25)) +
+              size = I(upgma.opt.rooted.support[1:24]/25)) +
   geom_nodelab(label = scores.upgma.opt.rooted.bs,
-               size=I(upgma.opt.rooted.support[1:23]/30),
+               size = I(upgma.opt.rooted.support[1:23]/30),
               geom = 'label') +
   ggtitle(expression(italic("MLE tree with bootstrap scores (UPGMA start tree)"))) +
 #Set colors    
@@ -1221,11 +1221,11 @@ screened.hamming.nj.opt.rooted.otu <- groupOTU(screened.hamming.nj.opt.rooted, i
 
 ggtree(screened.hamming.nj.opt.rooted.otu,
        right = TRUE,
-       aes(size=I(nj.opt.rooted.support/75))) +
+       aes(size = I(nj.opt.rooted.support/75))) +
   geom_tiplab(aes(color = group),
-              size=I(nj.opt.rooted.support[1:24]/25)) +
+              size = I(nj.opt.rooted.support[1:24]/25)) +
     geom_nodelab(label = scores.nj.opt.rooted.bs,
-                 size=I(nj.opt.rooted.support[1:23]/30),
+                 size = I(nj.opt.rooted.support[1:23]/30),
               geom = 'label') +
   ggtitle(expression(italic("MLE tree with bootstrap scores (NJ start tree)"))) +
 #Set colors    
