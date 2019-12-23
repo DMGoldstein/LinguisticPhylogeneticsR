@@ -3,7 +3,7 @@
 
 ## Overview
 
-This repository contains the data and source code for the paper "Indo-European phylogenetics with R: A tutorial introduction," _Indo-European_ _Linguistics_ (Goldstein 2020).
+This repository contains the data and source code for the paper "Indo-European phylogenetics with R: A tutorial introduction," _Indo-European_ _Linguistics_ (Goldstein 2020). This repository is archived at `10.5281/zenodo.8475`.
 
 ## Data
 
