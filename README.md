@@ -1,9 +1,9 @@
-# Data and source code for the paper "Linguistic phylogenetics in R: A tutorial introduction"
+# Data and source code for the paper "Indo-European phylogenetics with R: A tutorial introduction"
 
 
 ## Overview
 
-This repository contains the data and source code for the paper "Linguistic phylogenetics in R: A tutorial introduction," _Indo-European_Linguistics_ (Goldstein 2020).
+This repository contains the data and source code for the paper "Indo-European phylogenetics with R: A tutorial introduction," _Indo-European_Linguistics_ (Goldstein 2020).
 
 ## Data
 
